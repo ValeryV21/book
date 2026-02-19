@@ -53,6 +53,14 @@ def add_book(title: str, author: str, genre: str, year: int, is_read: bool) -> N
         )
 
 
+def update_read_status(rows: list[dict]) -> None:
+    with get_connection() as conn:
+        conn.executemany(
+            "UPDATE books SET is_read = ? WHERE id = ?",
+            [(int(row["Прочетена"]), int(row["id"])) for row in rows],
+        )
+
+
 def load_books(search_query: str, unread_only: bool) -> list[dict]:
     clauses: list[str] = []
     params: list[str] = []
@@ -67,8 +75,7 @@ def load_books(search_query: str, unread_only: bool) -> list[dict]:
 
     where_sql = f"WHERE {' AND '.join(clauses)}" if clauses else ""
     query = f"""
-        SELECT id, title, author, genre, year,
-               CASE WHEN is_read = 1 THEN 'Да' ELSE 'Не' END AS read_status
+        SELECT id, title, author, genre, year, is_read
         FROM books
         {where_sql}
         ORDER BY year DESC, title ASC
@@ -79,12 +86,12 @@ def load_books(search_query: str, unread_only: bool) -> list[dict]:
 
     return [
         {
-            "ID": row["id"],
+            "id": row["id"],
             "Заглавие": row["title"],
             "Автор": row["author"],
             "Жанр": row["genre"],
             "Година": row["year"],
-            "Прочетена": row["read_status"],
+            "Прочетена": bool(row["is_read"]),
         }
         for row in rows
     ]
@@ -102,14 +109,40 @@ def get_totals() -> tuple[int, int, int]:
     return total, read, progress
 
 
+def apply_styles() -> None:
+    st.markdown(
+        """
+        <style>
+            .stApp {
+                background: linear-gradient(120deg, #f7f7ff 0%, #eef5ff 100%);
+            }
+            .block-container {
+                padding-top: 2rem;
+                padding-bottom: 2rem;
+            }
+            .stats-note {
+                background: #ffffffcc;
+                border: 1px solid #d7e3ff;
+                border-radius: 12px;
+                padding: 0.75rem 1rem;
+                margin-bottom: 0.5rem;
+            }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 init_db()
 
 st.set_page_config(page_title="Списък с книги", page_icon="📚", layout="wide")
-st.title("📚 Списък с книги")
-st.caption("Приложение с база данни и начални български книги.")
+apply_styles()
+
+st.title("📚 Моята библиотека")
+st.caption("Стилен списък с книги + база данни. Маркирай книгите като прочетени директно от таблицата.")
 
 with st.sidebar:
-    st.header("Добави нова книга")
+    st.header("➕ Добави нова книга")
     with st.form("add_book"):
         title = st.text_input("Заглавие")
         author = st.text_input("Автор")
@@ -128,15 +161,40 @@ with st.sidebar:
 
 c1, c2 = st.columns([2, 1])
 with c1:
-    search = st.text_input("Търсене по заглавие или автор")
+    search = st.text_input("🔎 Търсене по заглавие или автор")
 with c2:
     unread_only = st.toggle("Само непрочетени", value=False)
 
 books = load_books(search, unread_only)
-st.subheader("Книги в базата")
-st.dataframe(books, use_container_width=True, hide_index=True)
 
 total, read, progress = get_totals()
+st.markdown(
+    f"<div class='stats-note'>Имаш <b>{total}</b> книги, от които <b>{read}</b> прочетени ({progress}%).</div>",
+    unsafe_allow_html=True,
+)
+
+st.subheader("📖 Книги в библиотеката")
+
+edited_books = st.data_editor(
+    books,
+    hide_index=True,
+    use_container_width=True,
+    column_config={
+        "id": st.column_config.NumberColumn("ID", disabled=True),
+        "Заглавие": st.column_config.TextColumn(disabled=True),
+        "Автор": st.column_config.TextColumn(disabled=True),
+        "Жанр": st.column_config.TextColumn(disabled=True),
+        "Година": st.column_config.NumberColumn(disabled=True),
+        "Прочетена": st.column_config.CheckboxColumn("✅ Прочетена"),
+    },
+    disabled=["id", "Заглавие", "Автор", "Жанр", "Година"],
+)
+
+if st.button("💾 Запази отметките за прочетени"):
+    update_read_status(edited_books)
+    st.success("Промените бяха записани успешно.")
+    st.rerun()
+
 m1, m2, m3 = st.columns(3)
 m1.metric("Общо книги", total)
 m2.metric("Прочетени", read)
