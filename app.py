@@ -146,7 +146,8 @@ with st.sidebar:
     with st.form("add_book"):
         title = st.text_input("Заглавие")
         author = st.text_input("Автор")
-        genre = st.text_input("Жанр")
+        genre_options = ["Класика", "Роман", "Исторически", "Фантастика", "Поезия", "Биография", "Сатира", "Криминален", "Друг"]
+        genre = st.selectbox("Жанр", genre_options, index=0)
         year = st.number_input("Година", min_value=0, max_value=3000, value=2024, step=1)
         is_read = st.checkbox("Прочетена", value=False)
         submit = st.form_submit_button("Запази")
