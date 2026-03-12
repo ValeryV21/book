@@ -4,8 +4,9 @@ import streamlit as st
 conn = sqlite3.connect("books.db", check_same_thread=False)
 c = conn.cursor()
 
+# създаване на таблица
 c.execute("""
-CREATE TABLE IF NOT EXISTS books (
+CREATE TABLE IF NOT EXISTS books(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT,
     author TEXT,
@@ -15,21 +16,22 @@ CREATE TABLE IF NOT EXISTS books (
 
 st.title("📚 Моята библиотека")
 
-st.header("Добави книга")
-
 title = st.text_input("Заглавие")
 author = st.text_input("Автор")
-year = st.number_input("Година", 0, 3000, 2024)
+year = int(st.number_input("Година", 0, 3000, 2024))
 
-if st.button("Добави"):
-    c.execute(
-        "INSERT INTO books (title, author, year) VALUES (?, ?, ?)",
-        (title, author, year),
-    )
-    conn.commit()
-    st.success("Книгата е добавена")
+if st.button("Добави книга"):
+    if title and author:
+        c.execute(
+            "INSERT INTO books(title, author, year) VALUES (?, ?, ?)",
+            (title, author, year)
+        )
+        conn.commit()
+        st.success("Книгата е добавена!")
+    else:
+        st.error("Въведи заглавие и автор")
 
-st.header("Всички книги")
+st.subheader("Всички книги")
 
 books = c.execute("SELECT * FROM books").fetchall()
 
