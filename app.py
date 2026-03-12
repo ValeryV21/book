@@ -1,11 +1,9 @@
 import sqlite3
 import streamlit as st
 
-# връзка с базата
 conn = sqlite3.connect("books.db", check_same_thread=False)
 c = conn.cursor()
 
-# създаване на таблица
 c.execute("""
 CREATE TABLE IF NOT EXISTS books(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -14,24 +12,20 @@ CREATE TABLE IF NOT EXISTS books(
 )
 """)
 
-st.title("📚 Моята библиотека")
-
-# добавяне на книга
-st.header("Добави книга")
+st.title("📚 Библиотека")
 
 title = st.text_input("Заглавие")
 author = st.text_input("Автор")
 
-if st.button("Добави"):
-    if title and author:
-        c.execute("INSERT INTO books(title, author) VALUES (?, ?)", (title, author))
-        conn.commit()
-        st.success("Книгата е добавена")
+if st.button("Добави книга"):
+    c.execute(
+        "INSERT INTO books (title, author) VALUES (?, ?)",
+        (title, author)
+    )
+    conn.commit()
+    st.success("Добавена!")
 
-# търсене
-st.header("Търсене")
-
-search = st.text_input("Търси по заглавие или автор")
+search = st.text_input("Търси книга или автор")
 
 if search:
     books = c.execute(
@@ -41,8 +35,7 @@ if search:
 else:
     books = c.execute("SELECT * FROM books").fetchall()
 
-# показване на книгите
-st.header("Книги")
+st.subheader("Книги:")
 
 for book in books:
     st.write(book[1], "-", book[2])
