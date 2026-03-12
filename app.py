@@ -1,56 +1,41 @@
+import sqlite3
 import streamlit as st
-import requests
 
-st.set_page_config(page_title="Търсене на книги", page_icon="📚")
-st.title("📚 Търсене на книги")
+conn = sqlite3.connect("books.db", check_same_thread=False)
+c = conn.cursor()
 
-# --- Избор на режим ---
-режим = st.radio("Търси по:", ["Заглавие / ключова дума", "Автор"])
+c.execute("""
+CREATE TABLE IF NOT EXISTS books(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT,
+    author TEXT
+)
+""")
 
-# --- Поле за търсене ---
-заявка = st.text_input("Въведи заявка:")
+st.title("📚 Библиотека")
 
-# --- Функция за търсене на книги ---
-def търси_книги(текст):
-    url = "https://openlibrary.org/search.json"
-    отговор = requests.get(url, params={"q": текст, "limit": 10})
-    резултати = отговор.json().get("docs", [])
-    return резултати
+title = st.text_input("Заглавие")
+author = st.text_input("Автор")
 
-# --- Функция за търсене по автор ---
-def търси_автор(ime):
-    url = "https://openlibrary.org/search/authors.json"
-    отговор = requests.get(url, params={"q": ime, "limit": 5})
-    автори = отговор.json().get("docs", [])
-    return автори
+if st.button("Добави книга"):
+    c.execute(
+        "INSERT INTO books (title, author) VALUES (?, ?)",
+        (title, author)
+    )
+    conn.commit()
+    st.success("Добавена!")
 
-# --- Бутон и логика ---
-if st.button("🔍 Търси") and заявка:
+search = st.text_input("Търси книга или автор")
 
-    if режим == "Заглавие / ключова дума":
-        st.subheader("Намерени книги:")
-        книги = търси_книги(заявка)
+if search:
+    books = c.execute(
+        "SELECT * FROM books WHERE title LIKE ? OR author LIKE ?",
+        ('%' + search + '%', '%' + search + '%')
+    ).fetchall()
+else:
+    books = c.execute("SELECT * FROM books").fetchall()
 
-        if not книги:
-            st.warning("Няма намерени книги.")
-        else:
-            for книга in книги:
-                заглавие = книга.get("title", "Без заглавие")
-                автор    = ", ".join(книга.get("author_name", ["Неизвестен"]))
-                година   = книга.get("first_publish_year", "—")
-                st.markdown(f"**{заглавие}**  \n✍️ {автор}  |  📅 {година}")
-                st.divider()
+st.subheader("Книги:")
 
-    else:  # Търсене по автор
-        st.subheader("Намерени автори:")
-        автори = търси_автор(заявка)
-
-        if not автори:
-            st.warning("Няма намерени автори.")
-        else:
-            for автор in автори:
-                ime       = автор.get("name", "—")
-                години    = автор.get("birth_date", "—")
-                творби    = автор.get("work_count", "—")
-                st.markdown(f"**{ime}**  \n🎂 Роден: {години}  |  📖 Творби: {творби}")
-                st.divider()
+for book in books:
+    st.write(book[1], "-", book[2])
