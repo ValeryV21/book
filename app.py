@@ -6,8 +6,8 @@ c = conn.cursor()
 c.execute("""
     CREATE TABLE IF NOT EXISTS books(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT,
-        author TEXT
+        title TEXT NOT NULL,
+        author TEXT NOT NULL
     )
 """)
 
@@ -17,12 +17,12 @@ st.title("📚 Библиотека")
 title  = st.text_input("Заглавие")
 author = st.text_input("Автор")
 if st.button("Добави книга"):
-    if title and author:
-        c.execute("INSERT INTO books (title, author) VALUES (?, ?)", (title, author))
-        conn.commit()
-        st.success("Добавена!")
-    else:
+    if not title or not author:
         st.warning("Попълни и двете полета.")
+        st.stop()
+    c.execute("INSERT INTO books (title, author) VALUES (?, ?)", (title, author))
+    conn.commit()
+    st.success("Добавена!")
 
 # --- Търсене ---
 search = st.text_input("Търси книга или автор")
