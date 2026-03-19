@@ -1,62 +1,61 @@
-import sqlite3
 import streamlit as st
 
-# --- База данни ---
-conn = sqlite3.connect("books.db", check_same_thread=False)
-c = conn.cursor()
-c.execute("""
-    CREATE TABLE IF NOT EXISTS books (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT NOT NULL,
-        author TEXT NOT NULL,
-        genre TEXT,
-        year INTEGER,
-        is_read INTEGER DEFAULT 0
-    )
-""")
-conn.commit()
 
-st.title("📚 Моята библиотека")
 
-# --- Добавяне ---
-st.subheader("➕ Добави книга")
-title  = st.text_input("Заглавие")
-author = st.text_input("Автор")
-genre  = st.text_input("Жанр")
-year   = st.number_input("Година", min_value=0, max_value=2100, value=2024, step=1)
+books = [
+{“title”: “Хари Потър”,        “author”: “Дж. К. Роулинг”, “price”: 15.99, “genre”: “Фентъзи”},
+{“title”: “Властелинът на пръстените”, “author”: “Дж. Р. Р. Толкин”, “price”: 22.50, “genre”: “Фентъзи”},
+{“title”: “1984”,              “author”: “Джордж Оруел”,   “price”: 12.00, “genre”: “Антиутопия”},
+{“title”: “Малкият принц”,     “author”: “Антоан дьо Сент-Екзюпери”, “price”: 8.99, “genre”: “Класика”},
+{“title”: “Дон Кихот”,         “author”: “Мигел де Сервантес”, “price”: 18.00, “genre”: “Класика”},
+{“title”: “Мартин Идън”,       “author”: “Джак Лондон”,    “price”: 10.50, “genre”: “Роман”},
+{“title”: “Алхимикът”,         “author”: “Паулу Коелю”,    “price”: 13.99, “genre”: “Философия”},
+{“title”: “Престъпление и наказание”, “author”: “Достоевски”, “price”: 16.00, “genre”: “Класика”},
+]
 
-if st.button("Добави"):
-    if not title or not author:
-        st.warning("Попълни заглавие и автор.")
-        st.stop()
-    c.execute("INSERT INTO books (title, author, genre, year) VALUES (?, ?, ?, ?)",
-              (title, author, genre, year))
-    conn.commit()
-    st.success("Добавена!")
+
+
+st.title(“📚 Каталог с книги”)
+st.markdown(“Намери книга по **заглавие** или **цена**”)
+st.divider()
+
+
+
+col1, col2 = st.columns(2)
+
+with col1:
+search_title = st.text_input(“🔍 Търси по заглавие”, placeholder=“напр. Хари…”)
+
+with col2:
+max_price = st.slider(“💰 Максимална цена (лв.)”,
+min_value=0.0,
+max_value=50.0,
+value=50.0,
+step=0.5)
 
 st.divider()
 
-# --- Търсене ---
-search = st.text_input("🔎 Търси по заглавие или автор")
-if search:
-    books = c.execute(
-        "SELECT * FROM books WHERE title LIKE ? OR author LIKE ?",
-        (f"%{search}%", f"%{search}%")
-    ).fetchall()
-else:
-    books = c.execute("SELECT * FROM books ORDER BY year DESC").fetchall()
 
-# --- Показване ---
-st.subheader(f"Книги ({len(books)})")
-for b in books:
-    col1, col2, col3 = st.columns([5, 1, 1])
-    status = "✅" if b[5] else "📖"
-    col1.write(f"{status} **{b[1]}** — {b[2]}  |  {b[3]}  |  {b[4]}")
-    if col2.button("Прочетена", key=f"r{b[0]}"):
-        c.execute("UPDATE books SET is_read = 1 WHERE id = ?", (b[0],))
-        conn.commit()
-        st.rerun()
-    if col3.button("🗑️", key=f"d{b[0]}"):
-        c.execute("DELETE FROM books WHERE id = ?", (b[0],))
-        conn.commit()
-        st.rerun()
+
+results = [
+book for book in books
+if search_title.lower() in book[“title”].lower()   # търси в заглавието
+and book[“price”] <= max_price                      # проверява цената
+]
+
+
+
+st.subheader(f”📖 Намерени книги: {len(results)}”)
+
+if results:
+for book in results:
+with st.container(border=True):
+col_a, col_b = st.columns([3, 1])
+with col_a:
+st.markdown(f”### {book[‘title’]}”)
+st.write(f”✍️ **Автор:** {book[‘author’]}”)
+st.write(f”🏷️ **Жанр:** {book[‘genre’]}”)
+with col_b:
+st.metric(“Цена”, f”{book[‘price’]:.2f} лв.”)
+else:
+st.warning(“Няма намерени книги. Опитай с друго заглавие или по-висока цена.”)
